@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=utf-8 />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui' />
+    <title>North Dakota School District Boundaries - WGS84 Comparison</title>
+    
+    <!-- Leaflet CSS and JS -->
+    <link href='https://unpkg.com/leaflet@1.7.1/dist/leaflet.css' rel='stylesheet' />
+    <script src='https://unpkg.com/leaflet@1.7.1/dist/leaflet.js'></script>
+    
+    <!-- Side by Side Plugin -->
+    <script src="leaflet-side-by-side.js"></script>
+    
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .info-panel {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px;
+            border-radius: 8px;
+        }
+        
+        .info-panel h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+        
+        .info-panel p {
+            margin: 5px 0;
+            color: #6c757d;
+            line-height: 1.6;
+        }
+        
+        #map {
+            position: absolute;
+            top: 120px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 120px);
+        }
+        
+        .legend {
+            text-align: left;
+            line-height: 25px;
+            color: #555;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        
+        .legend i {
+            width: 25px;
+            height: 25px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🏫 North Dakota School District Boundaries</h1>
+        <p>Compare 2024 vs. 2025 school district boundaries using WGS84 projection</p>
+    </div>
+    
+    <div class="info-panel">
+        <h3>📋 How to Use This Tool</h3>
+        <p><strong>Left Side (Red):</strong> 2024 school district boundaries</p>
+        <p><strong>Right Side (Blue):</strong> 2025 school district boundaries</p>
+        <p><strong>Drag the divider line</strong> left or right to compare the two datasets side by side</p>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div class="loading" id="loading">
+        <h3>Loading boundary data...</h3>
+        <p>Please wait while the GeoJSON files are being processed...</p>
+    </div>
+
+    <script>
+        // Initialize the map centered on North Dakota
+        var map = L.map('map').setView([47.5515, -100.0020], 7);
+        
+        // Create panes for left and right sides
+        map.createPane('left');
+        map.createPane('right');
+        
+        // Add OpenStreetMap basemap
+        var baseMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Variables to store the layers
+        var overlay1, overlay2;
+        
+        // Function to style current boundaries (2024 - Red)
+        function styleCurrent(feature) {
+            return {
+                weight: 2,
+                opacity: 1,
+                color: 'red',
+                dashArray: '3',
+                fillOpacity: 0.3,
+                fillColor: 'red'
+            };
+        }
+        
+        // Function to style proposed boundaries (2025 - Blue)
+        function styleProposed(feature) {
+            return {
+                weight: 2,
+                opacity: 1,
+                color: 'blue',
+                dashArray: '3',
+                fillOpacity: 0.3,
+                fillColor: 'blue'
+            };
+        }
+        
+        // Function to handle feature highlighting
+        function highlightFeature(e) {
+            var layer = e.target;
+            layer.setStyle({
+                weight: 5,
+                color: '#666',
+                dashArray: '',
+                fillOpacity: 0.7
+            });
+            
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.opera) {
+                layer.bringToFront();
+            }
+        }
+        
+        // Function to reset feature highlighting
+        function resetHighlight(e) {
+            if (e.target === overlay1) {
+                overlay1.resetStyle(e.target);
+            } else if (e.target === overlay2) {
+                overlay2.resetStyle(e.target);
+            }
+        }
+        
+        // Function to add popup and events to each feature
+        function onEachFeature(feature, layer, isCurrent) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight
+            });
+            
+            if (isCurrent) {
+                layer.bindPopup('<b>' + (feature.properties.NAME || feature.properties.DISTRICT_NAME || 'Unknown') + '</b><br/><br/>' +
+                    '<strong>Current Boundary (2024)</strong><br>' +
+                    'District ID: ' + (feature.properties.DISTRICT_ID || feature.properties.ID || 'N/A') + '<br>' +
+                    'County: ' + (feature.properties.COUNTY || 'N/A'));
+            } else {
+                layer.bindPopup('<b>' + (feature.properties.NAME || feature.properties.DISTRICT_NAME || 'Unknown') + '</b><br/><br/>' +
+                    '<strong>Proposed Boundary (2025)</strong><br>' +
+                    'District ID: ' + (feature.properties.DISTRICT_ID || feature.properties.ID || 'N/A') + '<br>' +
+                    'County: ' + (feature.properties.COUNTY || 'N/A'));
+            }
+        }
+        
+        // Function to load and process GeoJSON data
+        async function loadGeoJSONData() {
+            try {
+                console.log('Loading 2024 boundaries...');
+                const response2024 = await fetch('ND_SchoolDistrict_2024_WGS84.geojson');
+                const data2024 = await response2024.json();
+                console.log('2024 data loaded:', data2024.features.length, 'features');
+                
+                console.log('Loading 2025 boundaries...');
+                const response2025 = await fetch('ND_SchoolDistrict_2025_WGS84.geojson');
+                const data2025 = await response2025.json();
+                console.log('2025 data loaded:', data2025.features.length, 'features');
+                
+                // Create current boundaries layer (left pane)
+                overlay1 = L.geoJson(data2024, {
+                    style: styleCurrent,
+                    pane: 'left',
+                    onEachFeature: function(feature, layer) {
+                        onEachFeature(feature, layer, true);
+                    }
+                }).addTo(map);
+                
+                // Create proposed boundaries layer (right pane)
+                overlay2 = L.geoJson(data2025, {
+                    style: styleProposed,
+                    pane: 'right',
+                    onEachFeature: function(feature, layer) {
+                        onEachFeature(feature, layer, false);
+                    }
+                }).addTo(map);
+                
+                // Create legend for current boundaries (left side)
+                var legend1 = L.control({position: 'bottomleft'});
+                legend1.onAdd = function (map) {
+                    var div = L.DomUtil.create('div', 'info legend');
+                    div.innerHTML = '<strong>Current Boundaries (2024)</strong><br>' +
+                                   '<i style="background:red"></i> ' + data2024.features.length + ' Districts';
+                    return div;
+                };
+                legend1.addTo(map);
+                
+                // Create legend for proposed boundaries (right side)
+                var legend2 = L.control({position: 'bottomright'});
+                legend2.onAdd = function (map) {
+                    var div = L.DomUtil.create('div', 'info legend');
+                    div.innerHTML = '<strong>Proposed Boundaries (2025)</strong><br>' +
+                                   '<i style="background:blue"></i> ' + data2025.features.length + ' Districts';
+                    return div;
+                };
+                legend2.addTo(map);
+                
+                // Add the side-by-side control
+                L.control.sideBySide(overlay1, overlay2).addTo(map);
+                
+                // Fit map to show all boundaries
+                var allBounds = [];
+                data2024.features.forEach(function(feature) {
+                    if (feature.geometry && feature.geometry.coordinates) {
+                        allBounds.push(feature.geometry.coordinates);
+                    }
+                });
+                data2025.features.forEach(function(feature) {
+                    if (feature.geometry && feature.geometry.coordinates) {
+                        allBounds.push(feature.geometry.coordinates);
+                    }
+                });
+                
+                if (allBounds.length > 0) {
+                    var bounds = L.latLngBounds(allBounds.flat());
+                    map.fitBounds(bounds, { padding: [20, 20] });
+                }
+                
+                // Hide loading message
+                document.getElementById('loading').style.display = 'none';
+                
+                console.log('All data loaded and processed successfully!');
+                
+            } catch (error) {
+                console.error('Error loading GeoJSON data:', error);
+                document.getElementById('loading').innerHTML = '<h3>Error Loading Data</h3><p>' + error.message + '</p>';
+            }
+        }
+        
+        // Load the data when the page is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGeoJSONData();
+        });
+    </script>
+</body>
+</html>
