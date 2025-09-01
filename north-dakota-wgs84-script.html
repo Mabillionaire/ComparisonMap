@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=utf-8 />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui' />
+    <title>North Dakota School District Boundaries - WGS84 Comparison</title>
+    
+    <!-- Leaflet CSS and JS -->
+    <link href='https://unpkg.com/leaflet@1.7.1/dist/leaflet.css' rel='stylesheet' />
+    <script src='https://unpkg.com/leaflet@1.7.1/dist/leaflet.js'></script>
+    
+    <!-- Side by Side Plugin -->
+    <script src="leaflet-side-by-side.js"></script>
+    
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .info-panel {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px;
+            border-radius: 8px;
+        }
+        
+        .info-panel h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+        
+        .info-panel p {
+            margin: 5px 0;
+            color: #6c757d;
+            line-height: 1.6;
+        }
+        
+        #map {
+            position: absolute;
+            top: 120px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 120px);
+        }
+        
+        .legend {
+            text-align: left;
+            line-height: 25px;
+            color: #555;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        
+        .legend i {
+            width: 25px;
+            height: 25px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 280px;
+            right: -5px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: 200px;
+            display: none;
+        }
+        
+        .search-container {
+            position: absolute;
+            top: 130px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            min-width: 300px;
+        }
+        
+        .search-container input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1001;
+        }
+        
+        .search-result {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .search-result:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .search-result:last-child {
+            border-bottom: none;
+        }
+        
+        .layer-control {
+            position: absolute;
+            top: 130px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 200px;
+        }
+        
+        .layer-control h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .layer-toggle {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+        
+        .layer-toggle input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        .layer-toggle label {
+            cursor: pointer;
+            font-size: 13px;
+            color: #555;
+        }
+        
+        .layer-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 8px;
+            border: 1px solid #333;
+        }
+        
+
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>North Dakota School District Boundaries</h1>
+        <p>Compare 2024 vs. 2025 school district boundaries</p>
+    </div>
+    
+    <div class="info-panel">
+        <h3>📋 How to Use This Tool</h3>
+        <p><strong>Left Side (Red):</strong> 2024 school district boundaries</p>
+        <p><strong>Right Side (Blue):</strong> 2025 school district boundaries</p>
+        <p><strong>Drag the divider line</strong> left or right to compare the two datasets side by side</p>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div class="loading" id="loading">
+        <h3>Loading boundary data...</h3>
+        <p>Please wait while the GeoJSON files are being processed...</p>
+    </div>
+    
+    <div class="info-panel" id="info-panel">
+        <h4>District Information</h4>
+        <p id="info-content">Hover over a district to see details</p>
+    </div>
+    
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="Search for addresses, places, or districts..." />
+        <div class="search-results" id="search-results"></div>
+    </div>
+    
+    <div class="layer-control">
+        <h4>Layer Control</h4>
+        <div class="layer-toggle">
+            <input type="checkbox" id="toggle-2024" checked>
+            <div class="layer-color" style="background: blue;"></div>
+            <label for="toggle-2024">2024 Boundaries</label>
+        </div>
+        <div class="layer-toggle">
+            <input type="checkbox" id="toggle-2025" checked>
+            <div class="layer-color" style="background: red;"></div>
+            <label for="toggle-2025">2025 Boundaries</label>
+        </div>
+    </div>
+
+         <!-- Load GeoJSON data using JavaScript files to avoid CORS issues -->
+     <script src="nd_2024_boundaries.js"></script>
+     <script src="nd_2025_boundaries.js"></script>
+
+    <script>
+        // Initialize the map centered on North Dakota
+        var map = L.map('map').setView([47.5515, -100.0020], 7);
+        
+        // Create panes for left and right sides (required for updated side-by-side plugin)
+        map.createPane('left');
+        map.createPane('right');
+        
+        // Set initial z-index values
+        map.getPane('left').style.zIndex = 500;
+        map.getPane('right').style.zIndex = 400;
+        
+
+        
+        // Add OpenStreetMap basemap to both panes
+        var baseMapLeft = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            pane: 'left',
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        var baseMapRight = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            pane: 'right',
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Variables to store the layers
+        var overlay1, overlay2;
+        
+        // Function to style current boundaries (2024 - Blue lines with wide dashes, transparent fill)
+        function styleCurrent(feature) {
+            return {
+                weight: 2,
+                opacity: 1,
+                color: 'blue',
+                dashArray: '10, 15',
+                fillOpacity: 0,
+                fillColor: 'transparent'
+            };
+        }
+        
+        // Function to style proposed boundaries (2025 - Red solid lines, transparent fill)
+        function styleProposed(feature) {
+            return {
+                weight: 2,
+                opacity: 1,
+                color: 'red',
+                dashArray: '',
+                fillOpacity: 0,
+                fillColor: 'transparent'
+            };
+        }
+        
+        // Function to handle feature highlighting
+        function highlightFeature(e) {
+            var layer = e.target;
+            var feature = layer.feature;
+            
+            // Show info in the info panel
+            var infoContent = '<strong>' + (feature.properties.DistrictNa || feature.properties.NAME || 'Unknown') + '</strong><br/>';
+            if (overlay1.hasLayer(layer)) {
+                infoContent += '<span style="color: red;">Current Boundary (2024)</span><br/>';
+            } else {
+                infoContent += '<span style="color: blue;">Proposed Boundary (2025)</span><br/>';
+            }
+            infoContent += 'District ID: ' + (feature.properties.DistrictID || feature.properties.DISTRICT_ID || 'N/A') + '<br/>';
+            infoContent += 'County: ' + (feature.properties.CountyName || feature.properties.COUNTY || 'N/A') + '<br/>';
+            infoContent += 'County Seat: ' + (feature.properties.CountySeat || 'N/A') + '<br/>';
+            infoContent += 'LEA Type: ' + (feature.properties.LEAType || 'N/A');
+            
+            document.getElementById('info-content').innerHTML = infoContent;
+            document.getElementById('info-panel').style.display = 'block';
+            
+            // Light highlight effect - only change fill, keep original line color
+            var originalStyle = overlay1.hasLayer(layer) ? styleCurrent(layer.feature) : styleProposed(layer.feature);
+            layer.setStyle({
+                weight: originalStyle.weight,
+                color: originalStyle.color,
+                dashArray: originalStyle.dashArray,
+                fillOpacity: 0.3,
+                fillColor: originalStyle.color
+            });
+            
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.opera) {
+                layer.bringToFront();
+            }
+        }
+        
+        // Function to reset feature highlighting
+        function resetHighlight(e) {
+            var layer = e.target;
+            // Reset to original style based on which overlay it belongs to
+            if (overlay1.hasLayer(layer)) {
+                layer.setStyle(styleCurrent(layer.feature));
+            } else if (overlay2.hasLayer(layer)) {
+                layer.setStyle(styleProposed(layer.feature));
+            }
+            
+            // Hide info panel
+            document.getElementById('info-panel').style.display = 'none';
+        }
+        
+        // Function to add events to each feature
+        function onEachFeature(feature, layer, isCurrent) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight
+            });
+        }
+        
+        // Function to process the loaded GeoJSON data
+        function processGeoJSONData() {
+            try {
+                // Check if the data was loaded via script tags
+                if (typeof ND_SchoolDistrict_2024_WGS84 === 'undefined' || typeof ND_SchoolDistrict_2025_WGS84 === 'undefined') {
+                    throw new Error('GeoJSON data not loaded. Please check that the files exist and are accessible.');
+                }
+                
+                console.log('2024 data loaded:', ND_SchoolDistrict_2024_WGS84.features.length, 'features');
+                console.log('2025 data loaded:', ND_SchoolDistrict_2025_WGS84.features.length, 'features');
+                
+                // Create current boundaries layer (left pane)
+                overlay1 = L.geoJson(ND_SchoolDistrict_2024_WGS84, {
+                    style: styleCurrent,
+                    pane: 'left',
+                    onEachFeature: function(feature, layer) {
+                        onEachFeature(feature, layer, true);
+                    }
+                }).addTo(map);
+                
+                // Create proposed boundaries layer (right pane)
+                overlay2 = L.geoJson(ND_SchoolDistrict_2025_WGS84, {
+                    style: styleProposed,
+                    pane: 'right',
+                    onEachFeature: function(feature, layer) {
+                        onEachFeature(feature, layer, false);
+                    }
+                }).addTo(map);
+                
+                // Create legend for current boundaries (left side)
+                var legend1 = L.control({position: 'bottomleft'});
+                legend1.onAdd = function (map) {
+                    var div = L.DomUtil.create('div', 'info legend');
+                    div.innerHTML = '<strong>Current Boundaries (2024)</strong><br>' +
+                                   '<i style="background:blue; border: 2px dashed blue; border-style: dashed;"></i> Districts';
+                    return div;
+                };
+                legend1.addTo(map);
+                
+                // Create legend for proposed boundaries (right side)
+                var legend2 = L.control({position: 'bottomright'});
+                legend2.onAdd = function (map) {
+                    var div = L.DomUtil.create('div', 'info legend');
+                    div.innerHTML = '<strong>Proposed Boundaries (2025)</strong><br>' +
+                                   '<i style="background:red; border: 2px solid red;"></i> Districts';
+                    return div;
+                };
+                legend2.addTo(map);
+                
+                // Add the side-by-side control using the basemap layers
+                var sideBySideControl = L.control.sideBySide(baseMapLeft, baseMapRight).addTo(map);
+                
+                // Fit map to show all boundaries using the layer bounds
+                var group = new L.featureGroup([overlay1, overlay2]);
+                map.fitBounds(group.getBounds(), { padding: [20, 20] });
+                
+                // Hide loading message
+                document.getElementById('loading').style.display = 'none';
+                
+                console.log('All data loaded and processed successfully!');
+                
+            } catch (error) {
+                console.error('Error processing GeoJSON data:', error);
+                document.getElementById('loading').innerHTML = '<h3>Error Loading Data</h3><p>' + error.message + '</p>';
+            }
+        }
+        
+        // Search functionality
+        var searchInput = document.getElementById('search-input');
+        var searchResults = document.getElementById('search-results');
+        var allDistricts = [];
+        
+        function initializeSearch() {
+            // Collect all districts for search
+            if (typeof ND_SchoolDistrict_2024_WGS84 !== 'undefined') {
+                ND_SchoolDistrict_2024_WGS84.features.forEach(function(feature) {
+                    allDistricts.push({
+                        name: feature.properties.DistrictNa,
+                        id: feature.properties.DistrictID,
+                        county: feature.properties.CountyName,
+                        year: '2024',
+                        feature: feature,
+                        layer: overlay1
+                    });
+                });
+            }
+            
+            if (typeof ND_SchoolDistrict_2025_WGS84 !== 'undefined') {
+                ND_SchoolDistrict_2025_WGS84.features.forEach(function(feature) {
+                    allDistricts.push({
+                        name: feature.properties.DistrictNa,
+                        id: feature.properties.DistrictID,
+                        county: feature.properties.CountyName,
+                        year: '2025',
+                        feature: feature,
+                        layer: overlay2
+                    });
+                });
+            }
+        }
+        
+        function searchDistricts(query) {
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            
+            // First search districts
+            var districtResults = allDistricts.filter(function(district) {
+                return district.name.toLowerCase().includes(query.toLowerCase()) ||
+                       district.county.toLowerCase().includes(query.toLowerCase()) ||
+                       district.id.toString().includes(query);
+            });
+            
+            // Then search for addresses/places
+            searchAddresses(query, districtResults);
+        }
+        
+        function searchAddresses(query, districtResults) {
+            // Show loading message
+            searchResults.innerHTML = '<div class="search-result">Searching...</div>';
+            searchResults.style.display = 'block';
+            
+            // Use Nominatim (OpenStreetMap) geocoding service
+            var geocodeUrl = 'https://nominatim.openstreetmap.org/search?format=json&q=' + 
+                           encodeURIComponent(query + ', North Dakota, USA') + 
+                           '&limit=5&addressdetails=1';
+            
+            fetch(geocodeUrl)
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Geocoding service unavailable');
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    var addressResults = data.map(function(item) {
+                        return {
+                            name: item.display_name,
+                            type: item.type || 'Location',
+                            lat: parseFloat(item.lat),
+                            lon: parseFloat(item.lon),
+                            category: 'address'
+                        };
+                    });
+                    
+                    // Combine district and address results
+                    var allResults = districtResults.concat(addressResults);
+                    displaySearchResults(allResults);
+                })
+                .catch(function(error) {
+                    console.log('Geocoding error:', error);
+                    // If geocoding fails, just show district results
+                    displaySearchResults(districtResults);
+                });
+        }
+        
+        function displaySearchResults(results) {
+            searchResults.innerHTML = '';
+            
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="search-result">No results found</div>';
+            } else {
+                results.slice(0, 10).forEach(function(result) {
+                    var resultDiv = document.createElement('div');
+                    resultDiv.className = 'search-result';
+                    
+                    if (result.category === 'address') {
+                        // Address/place result
+                        resultDiv.innerHTML = '<strong>' + result.name + '</strong><br/>' +
+                                            '<small>' + result.type + '</small>';
+                        resultDiv.setAttribute('data-lat', result.lat);
+                        resultDiv.setAttribute('data-lon', result.lon);
+                        resultDiv.setAttribute('data-category', 'address');
+                        
+                        resultDiv.addEventListener('click', function() {
+                            zoomToAddress(result.lat, result.lon);
+                            searchResults.style.display = 'none';
+                            searchInput.value = '';
+                        });
+                    } else {
+                        // District result
+                        resultDiv.innerHTML = '<strong>' + result.name + '</strong><br/>' +
+                                            '<small>' + result.county + ' County (' + result.year + ')</small>';
+                        
+                        resultDiv.addEventListener('click', function() {
+                            zoomToDistrict(result);
+                            searchResults.style.display = 'none';
+                            searchInput.value = '';
+                        });
+                    }
+                    
+                    searchResults.appendChild(resultDiv);
+                });
+            }
+            
+            searchResults.style.display = 'block';
+        }
+        
+        function zoomToDistrict(district) {
+            var bounds = L.geoJson(district.feature).getBounds();
+            map.fitBounds(bounds, { padding: [20, 20] });
+        }
+        
+        function zoomToAddress(lat, lon) {
+            map.setView([lat, lon], 12);
+        }
+        
+        // Event listeners for search
+        searchInput.addEventListener('input', function() {
+            searchDistricts(this.value);
+        });
+        
+        searchInput.addEventListener('focus', function() {
+            if (this.value.length >= 2) {
+                searchResults.style.display = 'block';
+            }
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-container')) {
+                searchResults.style.display = 'none';
+            }
+        });
+        
+        // Layer toggle functionality
+        var toggle2024 = document.getElementById('toggle-2024');
+        var toggle2025 = document.getElementById('toggle-2025');
+        
+        function updateLayerVisibility() {
+            // 2024 boundaries: show on both sides when checked
+            if (toggle2024.checked) {
+                map.addLayer(overlay1);
+            } else {
+                map.removeLayer(overlay1);
+            }
+            
+            // 2025 boundaries: only show on right side when checked
+            if (toggle2025.checked) {
+                map.addLayer(overlay2);
+            } else {
+                map.removeLayer(overlay2);
+            }
+        }
+        
+        toggle2024.addEventListener('change', updateLayerVisibility);
+        toggle2025.addEventListener('change', updateLayerVisibility);
+        
+        // Wait for the page and scripts to load, then process the data
+        window.addEventListener('load', function() {
+            // Give the script tags a moment to load the data
+            setTimeout(function() {
+                processGeoJSONData();
+                // Initialize search after data is loaded
+                setTimeout(initializeSearch, 100);
+            }, 100);
+        });
+    </script>
+</body>
+</html>
