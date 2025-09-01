@@ -1,167 +1,184 @@
-# 🏫 School Boundaries GIS Viewer
+# North Dakota School District Boundary Comparison Tool
 
-A modern, interactive web application for comparing and visualizing different school boundary datasets using a slider function and interactive mapping.
+A professional web application for comparing North Dakota school district boundaries between 2024 and 2025 using an interactive split-screen interface.
 
-## ✨ Features
+## Features
 
-- **Interactive Map**: Built with Leaflet.js for smooth, responsive mapping
-- **Dual Dataset Comparison**: View two different school boundary datasets simultaneously
-- **Slider Control**: Smoothly blend between datasets with a real-time slider
-- **Modern UI**: Beautiful, responsive design with gradient headers and smooth animations
-- **Basemap Integration**: OpenStreetMap navigation basemap for context
-- **Mobile Responsive**: Works seamlessly on desktop and mobile devices
-- **Real-time Updates**: Instant visual feedback as you adjust the slider
+### **Interactive Split-Screen Comparison**
+- **Side-by-side view** with draggable slider to compare 2024 vs 2025 boundaries
+- **Real-time comparison** as you drag the slider across the map
+- **Visual differentiation** with dashed blue lines (2024) and solid red lines (2025)
 
-## 🚀 Quick Start
+### **Enhanced Search Functionality**
+- **District Search**: Find school districts by name, county, or ID
+- **Address & Place Search**: Search for any address, city, landmark, or location in North Dakota
+- **Geocoding Integration**: Uses OpenStreetMap Nominatim API for accurate address lookup
+- **Smart Results**: Combines district and location results in one search
 
-1. **Open the Application**: Simply open `index.html` in any modern web browser
-2. **Use the Slider**: Move the slider to blend between Dataset A (red) and Dataset B (blue)
-3. **Explore the Map**: Click on boundaries for detailed information
-4. **Navigate**: Use standard map controls (zoom, pan, etc.)
+### **Layer Controls**
+- **Independent Toggle**: Turn 2024 and 2025 boundaries on/off independently
+- **Visual Indicators**: Color-coded checkboxes matching the boundary styles
+- **Real-time Updates**: Instant visibility changes
 
-## 🛠️ Technical Details
+### **Interactive Information Panel**
+- **Hover Details**: Hover over any boundary to see district information
+- **Comprehensive Data**: District name, ID, county, county seat, and LEA type
+- **Clean Interface**: Information appears in a styled panel below the layer controls
 
-### Built With
-- **HTML5**: Semantic markup and structure
-- **CSS3**: Modern styling with flexbox, gradients, and responsive design
-- **JavaScript (ES6+)**: Modern JavaScript with async/await support
-- **Leaflet.js**: Open-source mapping library for interactive maps
-- **OpenStreetMap**: Free, open-source mapping tiles
+### **Professional Styling**
+- **Modern Design**: Clean, professional interface with gradient header
+- **Responsive Layout**: Works on desktop and mobile devices
+- **Visual Clarity**: Transparent fills with distinct line styles for easy comparison
 
-### Architecture
-- **Modular Design**: Clean separation of concerns between UI, data, and mapping
-- **Layer Management**: Efficient handling of multiple map layers
-- **Event-Driven**: Responsive slider controls with real-time updates
-- **Error Handling**: Graceful error handling and user feedback
+## Quick Start
 
-## 📊 Data Integration
+### **Option 1: Direct Use**
+1. Open `north-dakota-wgs84-script.html` in any modern web browser
+2. The application loads automatically with all data pre-configured
+3. Start comparing boundaries immediately!
 
-### Current Sample Data
-The application currently includes sample school boundary data for demonstration:
-- **Dataset A**: Sample school districts in New York and Los Angeles areas
-- **Dataset B**: Slightly modified boundaries to show differences
+### **Option 2: Web Hosting**
+1. Upload all files to any web server
+2. Access via web browser
+3. Share the URL with others
 
-### Integrating Real Shapefile Data
+### **Option 3: GitHub Pages**
+1. Enable GitHub Pages in your repository settings
+2. Set source to "Deploy from a branch" → "master"
+3. Access at `https://yourusername.github.io/ComparisonMap/north-dakota-wgs84-script.html`
 
-To use your actual school boundary shapefiles, you have several options:
+## File Structure
 
-#### Option 1: Convert to GeoJSON (Recommended)
-1. Convert your shapefiles to GeoJSON format using QGIS, GDAL, or online converters
-2. Replace the `sampleBoundariesA` and `sampleBoundariesB` arrays in the JavaScript code
-3. Update the coordinate data with your actual boundary coordinates
-
-#### Option 2: Use Shapefile.js
-1. Include the `shapefile.js` library in your HTML
-2. Load shapefiles directly in the browser
-3. Parse and convert to GeoJSON format for Leaflet
-
-#### Option 3: Server-Side Processing
-1. Set up a backend service (Node.js, Python, etc.)
-2. Convert shapefiles on the server
-3. Serve GeoJSON data via API endpoints
-
-### Data Format Example
-```javascript
-const realBoundariesA = [
-    {
-        name: "Your School District Name",
-        coordinates: [
-            [latitude1, longitude1],
-            [latitude2, longitude2],
-            [latitude3, longitude3],
-            [latitude1, longitude1] // Close the polygon
-        ]
-    }
-    // ... more boundaries
-];
+```
+ComparisonMap/
+├── north-dakota-wgs84-script.html    # Main application file
+├── leaflet-side-by-side.js           # Split-screen comparison plugin
+├── nd_2024_boundaries.js             # 2024 school district data
+├── nd_2025_boundaries.js             # 2025 school district data
+├── convert_geojson_to_js.py          # Data conversion utility
+└── README.md                         # This documentation
 ```
 
-## 🎨 Customization
+## Technical Details
 
-### Styling
-- **Colors**: Modify CSS variables for custom color schemes
-- **Layout**: Adjust CSS grid and flexbox properties for different layouts
-- **Typography**: Update font families and sizes in the CSS
+### **Technologies Used**
+- **Leaflet.js**: Interactive mapping library
+- **Leaflet Side-by-Side**: Custom plugin for split-screen comparison
+- **OpenStreetMap**: Basemap tiles and geocoding service
+- **GeoJSON**: Geospatial data format
+- **JavaScript**: Client-side functionality
+- **HTML5/CSS3**: Modern web standards
 
-### Functionality
-- **Blending Algorithm**: Customize the `createBlendedPolygon` function for different blending methods
-- **Additional Controls**: Add more interactive elements like layer toggles or filters
-- **Data Sources**: Integrate with external APIs or databases
+### **Data Sources**
+- **2024 Boundaries**: North Dakota Department of Public Instruction
+- **2025 Boundaries**: Proposed changes for comparison
+- **Geocoding**: OpenStreetMap Nominatim API
+- **Basemap**: OpenStreetMap tiles
 
-## 🌐 Browser Compatibility
+### **Browser Compatibility**
+- Chrome 60+
+- Firefox 55+
+- Safari 12+
+- Edge 79+
+- Mobile browsers
 
-- **Chrome**: 60+ ✅
-- **Firefox**: 55+ ✅
-- **Safari**: 12+ ✅
-- **Edge**: 79+ ✅
-- **Internet Explorer**: Not supported ❌
+## How to Use
 
-## 📱 Mobile Features
+### **Basic Comparison**
+1. **Drag the slider** in the center to compare boundaries
+2. **Left side** shows 2024 boundaries (blue dashed lines)
+3. **Right side** shows 2025 boundaries (red solid lines)
 
-- Responsive design that adapts to screen size
-- Touch-friendly slider controls
-- Optimized map interactions for mobile devices
-- Collapsible UI elements for small screens
+### **Search Functionality**
+1. **Type in the search bar** (top-left)
+2. **Search for districts**: "Fargo", "Bismarck High School"
+3. **Search for addresses**: "123 Main St, Fargo"
+4. **Search for places**: "Fargo Dome", "Grand Forks"
+5. **Click results** to zoom to location
 
-## 🔧 Development
+### **Layer Controls**
+1. **Use checkboxes** (top-right) to toggle boundary visibility
+2. **2024 checkbox**: Shows/hides current boundaries
+3. **2025 checkbox**: Shows/hides proposed boundaries
 
-### Local Development
-1. Clone or download the project files
-2. Open `index.html` in your browser
-3. Use browser developer tools for debugging
-4. Modify the JavaScript code for custom functionality
+### **Information Panel**
+1. **Hover over any boundary** to see district details
+2. **Information appears** in the panel below layer controls
+3. **Move mouse away** to hide the panel
 
-### Testing
-- Test slider functionality across different browsers
-- Verify mobile responsiveness
-- Check map performance with large datasets
-- Validate error handling
+## Customization
 
-## 📈 Performance Considerations
+### **Styling Changes**
+Edit the CSS in `north-dakota-wgs84-script.html`:
+- **Colors**: Change boundary colors in `styleCurrent()` and `styleProposed()` functions
+- **Line styles**: Modify `dashArray` for different dash patterns
+- **Interface**: Update CSS classes for different appearance
 
-- **Large Datasets**: For datasets with many boundaries, consider implementing clustering
-- **Smooth Blending**: The current blending algorithm is simple; consider more sophisticated geometry operations for complex boundaries
-- **Memory Management**: Clear unused layers to prevent memory leaks
-- **Tile Loading**: Optimize basemap tile loading for better performance
+### **Data Updates**
+1. **Replace GeoJSON files** with new boundary data
+2. **Run conversion script**: `python convert_geojson_to_js.py`
+3. **Update HTML** to reference new JavaScript files
 
-## 🚀 Future Enhancements
+## Data Conversion
 
-- **Advanced Blending**: Implement more sophisticated boundary blending algorithms
-- **Data Export**: Add functionality to export blended boundaries
-- **Layer Management**: Allow users to toggle individual datasets on/off
-- **Historical Comparison**: Add timeline functionality for temporal boundary changes
-- **3D Visualization**: Extend to 3D mapping capabilities
-- **Real-time Data**: Integrate with live data feeds
+The `convert_geojson_to_js.py` script converts GeoJSON files to JavaScript format for easy web loading:
 
-## 🤝 Contributing
+```bash
+python convert_geojson_to_js.py
+```
 
-Feel free to contribute improvements, bug fixes, or new features:
-1. Fork the project
+This creates:
+- `nd_2024_boundaries.js` - 2024 district data
+- `nd_2025_boundaries.js` - 2025 district data
+
+## Deployment Options
+
+### **GitHub Pages**
+- Free hosting for public repositories
+- Automatic HTTPS
+- Custom domain support
+
+### **Netlify**
+- Drag and drop deployment
+- Automatic builds from Git
+- Form handling and serverless functions
+
+### **Vercel**
+- Zero-config deployment
+- Automatic scaling
+- Global CDN
+
+### **Traditional Web Hosting**
+- Upload files via FTP/SFTP
+- Works with any web server
+- No special configuration needed
+
+## Contributing
+
+1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Test thoroughly
 5. Submit a pull request
 
-## 📄 License
+## License
 
-This project is open source and available under the MIT License.
+This project is open source and available under the [MIT License](LICENSE).
 
-## 🆘 Support
+## Support
 
 For questions or issues:
-1. Check the browser console for error messages
-2. Verify your data format matches the expected structure
-3. Ensure all dependencies are loading correctly
-4. Test in different browsers to isolate issues
+1. Check the [Issues](https://github.com/Mabillionaire/ComparisonMap/issues) page
+2. Create a new issue with detailed description
+3. Include browser version and error messages
 
-## 🎯 Use Cases
+## Acknowledgments
 
-- **School District Planning**: Compare proposed vs. current boundaries
-- **Educational Research**: Analyze boundary changes over time
-- **Community Engagement**: Visualize boundary proposals for public input
-- **Administrative Decision Making**: Support boundary-related policy decisions
-- **GIS Education**: Teaching tool for geographic information systems
+- **Leaflet.js** community for the excellent mapping library
+- **OpenStreetMap** contributors for free map data
+- **North Dakota Department of Public Instruction** for boundary data
+- **Nominatim** for geocoding services
 
 ---
 
-**Happy Mapping! 🗺️**
+**Built for North Dakota education planning**
