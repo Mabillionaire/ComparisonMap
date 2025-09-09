@@ -1,0 +1,2 @@
+// config.js - DO NOT COMMIT TO GIT
+window.MAPBOX_TOKEN = 'pk.eyJ1IjoibWlrZWJtYWRlYXRtYWIiLCJhIjoiY203cWlnaWdmMG9oYTJpb2FxamJ1c2ZhYyJ9.q2nSl5TPa7Hv1GjNqb1F_A';

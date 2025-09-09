@@ -12,6 +12,9 @@
     <!-- Side by Side Plugin -->
     <script src="leaflet-side-by-side.js"></script>
     
+    <!-- Mapbox Configuration -->
+    <script src="config.js"></script>
+    
     <style>
         body {
             padding: 0;
@@ -112,7 +115,7 @@
         .search-container {
             position: absolute;
             top: 130px;
-            left: 10px;
+            left: 80px;
             z-index: 1000;
             background: rgba(255, 255, 255, 0.9);
             padding: 10px;
@@ -159,6 +162,26 @@
             border-bottom: none;
         }
         
+        .search-loading {
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            padding: 15px;
+        }
+        
+        .search-result:hover {
+            background-color: #f0f8ff;
+            cursor: pointer;
+        }
+        
+        .search-result strong {
+            color: #333;
+        }
+        
+        .search-result small {
+            color: #666;
+        }
+        
         .layer-control {
             position: absolute;
             top: 130px;
@@ -175,6 +198,50 @@
             margin: 0 0 10px 0;
             color: #333;
             font-size: 14px;
+        }
+        
+        .basemap-control {
+            position: absolute;
+            top: 205px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        }
+        
+        .basemap-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            transition: all 0.2s;
+            border-bottom: 1px solid #ccc;
+        }
+        
+        .basemap-btn:last-child {
+            border-bottom: none;
+        }
+        
+        .basemap-btn:hover {
+            background: #f4f4f4;
+        }
+        
+        .basemap-btn.active {
+            background: #007cba;
+            color: white;
+        }
+        
+        .basemap-btn.active:hover {
+            background: #005a87;
         }
         
         .layer-toggle {
@@ -221,6 +288,12 @@
     
     <div id="map"></div>
     
+    <!-- Basemap Toggle Control -->
+    <div class="basemap-control">
+        <button id="street-basemap" class="basemap-btn active" title="Street Map">⊞</button>
+        <button id="satellite-basemap" class="basemap-btn" title="Satellite View">✈</button>
+    </div>
+    
     <div class="loading" id="loading">
         <h3>Loading boundary data...</h3>
         <p>Please wait while the GeoJSON files are being processed...</p>
@@ -249,6 +322,7 @@
             <label for="toggle-2025">2025 Boundaries</label>
         </div>
     </div>
+    
 
          <!-- Load GeoJSON data using JavaScript files to avoid CORS issues -->
      <script src="nd_2024_boundaries.js"></script>
@@ -281,8 +355,22 @@
             maxZoom: 19
         }).addTo(map);
         
+        // Satellite basemap layers
+        var satelliteLeft = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            pane: 'left',
+            attribution: '© Esri',
+            maxZoom: 19
+        });
+        
+        var satelliteRight = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            pane: 'right',
+            attribution: '© Esri',
+            maxZoom: 19
+        });
+        
         // Variables to store the layers
         var overlay1, overlay2;
+        var currentBasemap = 'street'; // Track current basemap
         
         // Function to style current boundaries (2024 - Blue lines with wide dashes, transparent fill)
         function styleCurrent(feature) {
@@ -334,7 +422,7 @@
                 weight: originalStyle.weight,
                 color: originalStyle.color,
                 dashArray: originalStyle.dashArray,
-                fillOpacity: 0.3,
+                fillOpacity: 0.05,
                 fillColor: originalStyle.color
             });
             
@@ -432,13 +520,16 @@
             }
         }
         
-        // Search functionality
+        // Enhanced Search functionality with performance optimizations
         var searchInput = document.getElementById('search-input');
         var searchResults = document.getElementById('search-results');
         var allDistricts = [];
+        var searchTimeout;
+        var geocodingCache = {};
+        var isSearching = false;
         
         function initializeSearch() {
-            // Collect all districts for search
+            // Collect all districts for search with optimized search text
             if (typeof ND_SchoolDistrict_2024_WGS84 !== 'undefined') {
                 ND_SchoolDistrict_2024_WGS84.features.forEach(function(feature) {
                     allDistricts.push({
@@ -447,7 +538,8 @@
                         county: feature.properties.CountyName,
                         year: '2024',
                         feature: feature,
-                        layer: overlay1
+                        layer: overlay1,
+                        searchText: (feature.properties.DistrictNa + ' ' + feature.properties.CountyName + ' ' + feature.properties.DistrictID).toLowerCase()
                     });
                 });
             }
@@ -460,7 +552,8 @@
                         county: feature.properties.CountyName,
                         year: '2025',
                         feature: feature,
-                        layer: overlay2
+                        layer: overlay2,
+                        searchText: (feature.properties.DistrictNa + ' ' + feature.properties.CountyName + ' ' + feature.properties.DistrictID).toLowerCase()
                     });
                 });
             }
@@ -472,44 +565,94 @@
                 return;
             }
             
-            // First search districts
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            // Show immediate district results
             var districtResults = allDistricts.filter(function(district) {
-                return district.name.toLowerCase().includes(query.toLowerCase()) ||
-                       district.county.toLowerCase().includes(query.toLowerCase()) ||
-                       district.id.toString().includes(query);
+                return district.searchText.includes(query.toLowerCase());
             });
             
-            // Then search for addresses/places
-            searchAddresses(query, districtResults);
+            // Display district results immediately
+            displaySearchResults(districtResults);
+            
+            // Debounce address search to prevent excessive API calls
+            searchTimeout = setTimeout(function() {
+                searchAddresses(query, districtResults);
+            }, 300);
         }
         
         function searchAddresses(query, districtResults) {
-            // Show loading message
-            searchResults.innerHTML = '<div class="search-result">Searching...</div>';
-            searchResults.style.display = 'block';
+            if (isSearching) return;
             
-            // Use Nominatim (OpenStreetMap) geocoding service
-            var geocodeUrl = 'https://nominatim.openstreetmap.org/search?format=json&q=' + 
+            // Check if Mapbox token is available
+            if (!window.MAPBOX_TOKEN) {
+                console.error('Mapbox token not found. Please check config.js file.');
+                updateSearchStatus('Mapbox token not configured');
+                displaySearchResults(districtResults);
+                return;
+            }
+            
+            // Check cache first
+            var cacheKey = query.toLowerCase();
+            if (geocodingCache[cacheKey]) {
+                var allResults = districtResults.concat(geocodingCache[cacheKey]);
+                displaySearchResults(allResults);
+                return;
+            }
+            
+            isSearching = true;
+            updateSearchStatus('Searching addresses...');
+            
+            // Mapbox Geocoding API
+            var geocodeUrl = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + 
                            encodeURIComponent(query + ', North Dakota, USA') + 
-                           '&limit=5&addressdetails=1';
+                           '.json?access_token=' + window.MAPBOX_TOKEN + 
+                           '&limit=5&country=US&types=place,locality,neighborhood,address';
             
-            fetch(geocodeUrl)
+            fetch(geocodeUrl, {
+                headers: {
+                    'User-Agent': 'NorthDakotaSchoolBoundaries/1.0'
+                }
+            })
                 .then(function(response) {
                     if (!response.ok) {
-                        throw new Error('Geocoding service unavailable');
+                        if (response.status === 403) {
+                            throw new Error('Mapbox API access denied. Check your token and permissions.');
+                        } else if (response.status === 401) {
+                            throw new Error('Mapbox API unauthorized. Check your token.');
+                        } else {
+                            throw new Error('Geocoding service unavailable (Status: ' + response.status + ')');
+                        }
                     }
                     return response.json();
                 })
                 .then(function(data) {
-                    var addressResults = data.map(function(item) {
+                    console.log('Mapbox geocoding response:', data);
+                    
+                    if (!data || !data.features || data.features.length === 0) {
+                        console.log('No geocoding results found');
+                        displaySearchResults(districtResults);
+                        return;
+                    }
+                    
+                    var addressResults = data.features.map(function(feature) {
                         return {
-                            name: item.display_name,
-                            type: item.type || 'Location',
-                            lat: parseFloat(item.lat),
-                            lon: parseFloat(item.lon),
-                            category: 'address'
+                            name: feature.place_name,
+                            type: feature.place_type ? feature.place_type[0] : 'Location',
+                            lat: feature.center[1],
+                            lon: feature.center[0],
+                            category: 'address',
+                            relevance: feature.relevance || 0
                         };
+                    }).sort(function(a, b) {
+                        return b.relevance - a.relevance;
                     });
+                    
+                    // Cache the results
+                    geocodingCache[cacheKey] = addressResults;
                     
                     // Combine district and address results
                     var allResults = districtResults.concat(addressResults);
@@ -517,8 +660,73 @@
                 })
                 .catch(function(error) {
                     console.log('Geocoding error:', error);
-                    // If geocoding fails, just show district results
+                    // Try fallback geocoding with simpler parameters
+                    tryFallbackGeocoding(query, districtResults);
+                })
+                .finally(function() {
+                    isSearching = false;
+                });
+        }
+        
+        function updateSearchStatus(message) {
+            searchResults.innerHTML = '<div class="search-result search-loading">' + message + '</div>';
+            searchResults.style.display = 'block';
+        }
+        
+        function tryFallbackGeocoding(query, districtResults) {
+            console.log('Trying fallback geocoding...');
+            updateSearchStatus('Trying alternative search...');
+            
+            // Fallback Mapbox geocoding with broader search
+            var fallbackUrl = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + 
+                            encodeURIComponent(query) + 
+                            '.json?access_token=' + window.MAPBOX_TOKEN + 
+                            '&limit=3&country=US';
+            
+            fetch(fallbackUrl, {
+                headers: {
+                    'User-Agent': 'NorthDakotaSchoolBoundaries/1.0'
+                }
+            })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Fallback geocoding failed');
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    console.log('Fallback Mapbox geocoding response:', data);
+                    
+                    if (!data || !data.features || data.features.length === 0) {
+                        updateSearchStatus('No addresses found');
+                        displaySearchResults(districtResults);
+                        return;
+                    }
+                    
+                    var addressResults = data.features.map(function(feature) {
+                        return {
+                            name: feature.place_name,
+                            type: feature.place_type ? feature.place_type[0] : 'Location',
+                            lat: feature.center[1],
+                            lon: feature.center[0],
+                            category: 'address',
+                            relevance: feature.relevance || 0
+                        };
+                    }).sort(function(a, b) {
+                        return b.relevance - a.relevance;
+                    });
+                    
+                    // Combine district and address results
+                    var allResults = districtResults.concat(addressResults);
+                    displaySearchResults(allResults);
+                })
+                .catch(function(error) {
+                    console.log('Fallback geocoding error:', error);
+                    updateSearchStatus('Address search unavailable');
                     displaySearchResults(districtResults);
+                })
+                .finally(function() {
+                    isSearching = false;
                 });
         }
         
@@ -573,14 +781,27 @@
             map.setView([lat, lon], 12);
         }
         
-        // Event listeners for search
+        // Event listeners for search with debouncing
         searchInput.addEventListener('input', function() {
-            searchDistricts(this.value);
+            var query = this.value.trim();
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            searchDistricts(query);
         });
         
         searchInput.addEventListener('focus', function() {
             if (this.value.length >= 2) {
                 searchResults.style.display = 'block';
+            }
+        });
+        
+        // Keyboard shortcuts
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                searchResults.style.display = 'none';
+                this.blur();
             }
         });
         
@@ -614,6 +835,42 @@
         toggle2025.addEventListener('change', updateLayerVisibility);
         
         // Wait for the page and scripts to load, then process the data
+        // Basemap switcher functionality
+        function switchBasemap(basemapType) {
+            if (basemapType === 'street') {
+                // Remove satellite layers
+                map.removeLayer(satelliteLeft);
+                map.removeLayer(satelliteRight);
+                // Add street layers
+                map.addLayer(baseMapLeft);
+                map.addLayer(baseMapRight);
+                currentBasemap = 'street';
+            } else if (basemapType === 'satellite') {
+                // Remove street layers
+                map.removeLayer(baseMapLeft);
+                map.removeLayer(baseMapRight);
+                // Add satellite layers
+                map.addLayer(satelliteLeft);
+                map.addLayer(satelliteRight);
+                currentBasemap = 'satellite';
+            }
+        }
+        
+        // Basemap button event listeners
+        document.getElementById('street-basemap').addEventListener('click', function() {
+            switchBasemap('street');
+            // Update button states
+            document.getElementById('street-basemap').classList.add('active');
+            document.getElementById('satellite-basemap').classList.remove('active');
+        });
+        
+        document.getElementById('satellite-basemap').addEventListener('click', function() {
+            switchBasemap('satellite');
+            // Update button states
+            document.getElementById('satellite-basemap').classList.add('active');
+            document.getElementById('street-basemap').classList.remove('active');
+        });
+
         window.addEventListener('load', function() {
             // Give the script tags a moment to load the data
             setTimeout(function() {
@@ -625,3 +882,4 @@
     </script>
 </body>
 </html>
+that ka
