@@ -1,4 +1,4 @@
-var nd2025Boundaries = {
+var ND_SchoolDistrict_2025_WGS84 = {
   "type": "FeatureCollection",
   "name": "ND_SchoolDistrict_2025_WGS84",
   "crs": {
