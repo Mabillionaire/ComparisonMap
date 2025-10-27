@@ -1,6 +1,6 @@
 var nd2025Boundaries = {
   "type": "FeatureCollection",
-  "name": "ND_SchoolDistrict_2025V2",
+  "name": "ND_SchoolDistrict_2025_WGS84",
   "crs": {
     "type": "name",
     "properties": {
